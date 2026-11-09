@@ -10,7 +10,7 @@ from google.genai import errors, types
 
 from .llm import EXPLAIN_SYSTEM, SQL_SCHEMA, SQL_SYSTEM, LLMError
 
-DEFAULT_MODEL = "gemini-3.5-flash"
+DEFAULT_MODEL = "gemini-3.5-flash-lite"  # the free model the eval ran on
 TIMEOUT_MS = 60_000  # a hung call becomes an LLMError instead of stalling the agent
 # The free tier answers bursts with 429 (rate limit) and 503 (high demand); back off and try again.
 RETRY = types.HttpRetryOptions(attempts=6, initial_delay=5, max_delay=60, http_status_codes=[429, 503])
@@ -29,6 +29,8 @@ class GeminiLLM:
                 config=types.GenerateContentConfig(system_instruction=system, **config),
             )
         except errors.ClientError as e:
+            if e.code == 429 and "PerDay" in str(e.details):
+                raise LLMError(f"Daily quota used up for {self.model}; try another model or tomorrow.") from e
             if e.code == 429:
                 raise LLMError("Rate limited by the Gemini API; wait a moment and retry.") from e
             raise LLMError(f"Gemini API error {e.code}: {e.message}") from e

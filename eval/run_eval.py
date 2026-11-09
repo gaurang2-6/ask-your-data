@@ -40,6 +40,8 @@ def run(ids: list[int] | None, provider: str | None, model: str | None,
         start = time.perf_counter()
         state = graph.invoke({"question": q["question"]})
         seconds = time.perf_counter() - start
+        if (state.get("error") or "").startswith("Daily quota"):
+            sys.exit(f"{state['error']} Stopped at question {q['id']}; no report written.")
         ok = state.get("error") is None and "df" in state and matches(gold, state["df"])
         rows.append({"id": q["id"], "level": q["level"], "question": q["question"], "correct": ok,
                      "attempts": state.get("attempts", 0), "seconds": round(seconds, 1),

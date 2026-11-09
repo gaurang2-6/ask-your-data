@@ -1,6 +1,6 @@
 # Ask Your Data: a text-to-SQL agent with guardrails
 
-<!-- RESULT -->
+**Result:** on a 30-question test set over two years of retail sales, the agent answers **26/30 (87%)** correctly by execution accuracy, running on Google's free `gemini-3.5-flash-lite`. Every miss returned a plausible table built on the wrong definition; none came from invalid or unsafe SQL.
 
 ## Problem
 
@@ -65,7 +65,23 @@ flowchart LR
 
 ## Results
 
-<!-- EVAL -->
+Model: `gemini-3.5-flash-lite` (free tier), all 30 questions, no explanation step. Full table and every miss's SQL: [reports/eval_results.md](reports/eval_results.md).
+
+| Level | Questions | Correct | Accuracy |
+|---|---:|---:|---:|
+| easy | 10 | 9 | 90% |
+| medium | 13 | 10 | 77% |
+| hard | 7 | 7 | 100% |
+| **total** | **30** | **26** | **87%** |
+
+- **27 of 30 answered on the first try.** The other three (questions 23, 27 and 29) failed a check, got the error back and passed on the second attempt.
+- **Median time per question: 1.6 s.**
+- **All four misses picked the wrong source or grouping:**
+  - **Q7:** it read month-1 retention for one cohort from `cohort_retention` instead of the average curve (34.9% vs 20.9%).
+  - **Q11:** it used the `top_products` summary, which keeps only the 15 products with the most revenue, so the best seller by units is not in it.
+  - **Q16:** it used RFM `monetary`, which is spend net of returns, while the gold answer sums sales. The totals differ by up to £5,600 and two customers swap places.
+  - **Q22:** it grouped by product description, which splits one stock code into variants.
+- **Hard questions scored best.** They spell out the definition, while short questions like "who spent the most?" leave room for a near-miss.
 
 ## Recommendations
 
@@ -85,7 +101,7 @@ python scripts/build_db.py
 # or copy it from a local checkout of retail-customer-analytics:
 # python scripts/build_db.py --from ../retail-customer-analytics/reports/retail.duckdb
 
-pytest -q                                  # 60 tests, no API key or data needed
+pytest -q                                  # 61 tests, no API key or data needed
 
 export GEMINI_API_KEY=...                  # free key from aistudio.google.com
 export ASK_PROVIDER=gemini                 # or ANTHROPIC_API_KEY=... with the default claude
@@ -97,7 +113,9 @@ Set `ASK_MODEL` to try another model, or pass `--provider` and `--model` to `run
 
 ## Demo
 
-<!-- DEMO -->
+![The app answering "Show monthly revenue for 2011." with the plain-English answer, a line chart, the result table and the SQL it ran](reports/figures/demo.png)
+
+The app on `gemini-3.5-flash-lite`: one click on an example question returns the answer, a chart, the table and the query with the model's rationale.
 
 ## Project layout
 

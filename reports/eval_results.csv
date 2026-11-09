@@ -1,0 +1,31 @@
+id,level,question,correct,attempts,seconds,error,sql
+1,easy,What was total revenue across the whole period?,True,1,3.7,,SELECT total_revenue FROM headline_kpis
+2,easy,How many customers are in the Champions segment?,True,1,1.7,,"SELECT segment, customers FROM rfm_segments WHERE segment = 'Champions'"
+3,easy,"Which month had the highest revenue, and how much was it?",True,1,2.3,,"SELECT strftime(invoice_month, '%Y-%m') AS month, revenue FROM monthly_kpis ORDER BY revenue DESC LIMIT 1"
+4,easy,What share of revenue comes from the top 1% of customers?,True,1,2.0,,"SELECT top_pct, revenue_share_pct FROM revenue_concentration WHERE top_pct = 1"
+5,easy,What percentage of customers came back for a second order?,True,1,1.7,,SELECT repeat_pct FROM repeat_purchase
+6,easy,Show monthly revenue for 2011.,True,1,1.4,,"SELECT invoice_month AS month, revenue FROM monthly_kpis WHERE invoice_month >= '2011-01-01' AND invoice_month <= '2011-12-31' ORDER BY invoice_month ASC"
+7,easy,"On average, what percentage of a cohort buys again in the month after their first purchase?",False,1,1.5,,SELECT retention_pct AS percentage FROM cohort_retention WHERE months_since_first = 1 LIMIT 1
+8,easy,Which RFM segment has the highest median spend per customer?,True,1,1.2,,"SELECT segment AS segment, median_spend AS median_spend FROM rfm_segments ORDER BY median_spend DESC LIMIT 1"
+9,easy,How many new customers did we get each month in 2010?,True,1,1.5,,"SELECT strftime(invoice_month, '%Y-%m') AS month, new_customers FROM monthly_kpis WHERE invoice_month >= '2010-01-01' AND invoice_month <= '2010-12-31' ORDER BY invoice_month"
+10,easy,What was the year-over-year revenue growth in November 2011?,True,1,1.9,,"SELECT strftime('%Y-%m', invoice_month) AS month, revenue_yoy_pct AS yoy_growth_pct FROM monthly_kpis WHERE invoice_month = '2011-11-01'"
+11,medium,Which product (stock code) sold the most units?,False,1,1.9,,"SELECT stock_code, description, units FROM top_products ORDER BY units DESC LIMIT 1"
+12,medium,How many orders were placed in November 2010?,True,1,1.5,,SELECT orders AS orders FROM monthly_kpis WHERE invoice_month = '2010-11-01'
+13,medium,How many distinct customers bought something in 2011?,True,1,1.9,,SELECT count(DISTINCT customer_id) AS customers FROM sales WHERE year(invoice_date) = 2011 AND customer_id IS NOT NULL
+14,medium,What is total revenue by day of the week?,True,1,1.8,,"SELECT dayname(invoice_date) AS day_of_week, SUM(revenue) AS revenue FROM sales GROUP BY day_of_week ORDER BY CASE day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 WHEN 'Sunday' THEN 7 END"
+15,medium,What are the top 5 countries by revenue outside the United Kingdom?,True,1,1.7,,"SELECT country, revenue FROM top_countries WHERE country != 'United Kingdom' ORDER BY revenue DESC LIMIT 5"
+16,medium,Who are the 10 customers with the highest total spend?,False,1,1.8,,"SELECT customer_id, monetary AS total_spend FROM rfm ORDER BY monetary DESC LIMIT 10"
+17,medium,How many customers have only ever placed one order?,True,1,1.6,,SELECT count(*) AS single_order_customers FROM rfm WHERE frequency = 1
+18,medium,Which product (stock code) had the most units returned?,True,1,1.3,,"SELECT stock_code, sum(quantity) AS units_returned FROM returns GROUP BY stock_code ORDER BY units_returned DESC LIMIT 1"
+19,medium,How many customers were in the December 2010 cohort?,True,1,1.4,,"SELECT cohort_month, customers FROM cohort_retention WHERE cohort_month = '2010-12-01' AND months_since_first = 0"
+20,medium,What percentage of the January 2011 cohort was still buying three months later?,True,1,1.5,,SELECT retention_pct FROM cohort_retention WHERE cohort_month = '2011-01-01' AND months_since_first = 3
+21,medium,Which hour of the day gets the most orders?,True,1,1.2,,"SELECT hour(invoice_date) AS order_hour, count(DISTINCT invoice) AS orders FROM sales GROUP BY 1 ORDER BY orders DESC LIMIT 1"
+22,medium,What are the top 3 products by revenue in Germany?,False,1,1.1,,"SELECT description, sum(revenue) as revenue FROM sales WHERE country = 'Germany' GROUP BY description ORDER BY revenue DESC LIMIT 3"
+23,medium,"Excluding the partial month, which month had the biggest month-over-month revenue drop?",True,2,2.9,,"SELECT strftime(invoice_month, '%Y-%m') AS month, revenue_mom_pct AS revenue_drop_pct FROM monthly_kpis WHERE is_partial_month = false AND revenue_mom_pct IS NOT NULL ORDER BY revenue_mom_pct ASC LIMIT 1"
+24,hard,"On average, how many different products are in an order?",True,1,1.7,,"SELECT avg(product_count) AS avg_products_per_order FROM (SELECT invoice, count(DISTINCT stock_code) AS product_count FROM sales GROUP BY invoice)"
+25,hard,How much revenue did each RFM segment bring in during 2011?,True,1,1.3,,"SELECT s.segment AS segment, sum(sa.revenue) AS revenue FROM sales sa JOIN rfm s ON sa.customer_id = s.customer_id WHERE extract(year from sa.invoice_month) = 2011 GROUP BY s.segment ORDER BY revenue DESC"
+26,hard,"Among countries with at least 10 customers, which has the highest revenue per customer?",True,1,1.2,,"SELECT country, revenue / customers AS revenue_per_customer FROM top_countries WHERE customers >= 10 ORDER BY revenue_per_customer DESC LIMIT 1"
+27,hard,What percentage of Champions customers are outside the United Kingdom?,True,2,3.6,,SELECT 100.0 * sum(CASE WHEN country != 'United Kingdom' THEN 1 ELSE 0 END) / count(*) AS international_pct FROM rfm WHERE segment = 'Champions'
+28,hard,What was the average order value in each year?,True,1,1.5,,"SELECT strftime(invoice_month, '%Y') AS year, SUM(revenue) / SUM(orders) AS average_order_value FROM monthly_kpis GROUP BY year ORDER BY year"
+29,hard,How many customers who first bought in 2010 also bought in 2011?,True,2,2.8,,"SELECT count(DISTINCT c1.customer_id) AS returning_customers FROM customer_first_month AS c1 JOIN sales AS s ON c1.customer_id = s.customer_id WHERE date_part('year', c1.first_month) = 2010 AND date_part('year', s.invoice_date) = 2011"
+30,hard,What share of revenue in 2011 came from guest checkouts with no customer ID?,True,1,1.6,,"SELECT sum(CASE WHEN customer_id IS NULL THEN revenue ELSE 0.0 END) * 100.0 / sum(revenue) AS guest_revenue_pct FROM sales WHERE strftime(invoice_month, '%Y') = '2011'"

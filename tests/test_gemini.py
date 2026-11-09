@@ -60,3 +60,11 @@ def test_make_llm_picks_the_provider(monkeypatch):
     assert isinstance(make_llm("gemini"), GeminiLLM)
     with pytest.raises(ValueError):
         make_llm("other")
+
+
+def test_daily_quota_is_reported_as_such():
+    details = {"error": {"message": "quota", "status": "RESOURCE_EXHAUSTED",
+                         "details": [{"violations": [{"quotaId": "GenerateRequestsPerDayPerProjectPerModel"}]}]}}
+    llm, _ = gemini(error=errors.ClientError(429, details))
+    with pytest.raises(LLMError, match="Daily quota"):
+        llm.explain("q", "SELECT 1", "")
