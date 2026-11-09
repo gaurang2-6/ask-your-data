@@ -1,0 +1,197 @@
+# 30 business questions with a hand-written gold query each.
+# Scoring (eval/run_eval.py): the agent's result must have the same number of rows, and every
+# gold column must match one of its columns (numbers within 0.5%); extra columns are fine.
+# level: easy = one summary table, medium = one table with filters or grouping, hard = joins,
+# subqueries or definitions the model has to work out.
+
+- id: 1
+  level: easy
+  question: What was total revenue across the whole period?
+  gold_sql: SELECT total_revenue FROM headline_kpis
+
+- id: 2
+  level: easy
+  question: How many customers are in the Champions segment?
+  gold_sql: SELECT customers FROM rfm_segments WHERE segment = 'Champions'
+
+- id: 3
+  level: easy
+  question: Which month had the highest revenue, and how much was it?
+  gold_sql: SELECT invoice_month, revenue FROM monthly_kpis ORDER BY revenue DESC LIMIT 1
+
+- id: 4
+  level: easy
+  question: What share of revenue comes from the top 1% of customers?
+  gold_sql: SELECT revenue_share_pct FROM revenue_concentration WHERE top_pct = 1
+
+- id: 5
+  level: easy
+  question: What percentage of customers came back for a second order?
+  gold_sql: SELECT repeat_pct FROM repeat_purchase
+
+- id: 6
+  level: easy
+  question: Show monthly revenue for 2011.
+  gold_sql: SELECT invoice_month, revenue FROM monthly_kpis WHERE year(invoice_month) = 2011 ORDER BY invoice_month
+
+- id: 7
+  level: easy
+  question: On average, what percentage of a cohort buys again in the month after their first purchase?
+  gold_sql: SELECT retention_pct FROM retention_curve WHERE months_since_first = 1
+
+- id: 8
+  level: easy
+  question: Which RFM segment has the highest median spend per customer?
+  gold_sql: SELECT segment, median_spend FROM rfm_segments ORDER BY median_spend DESC LIMIT 1
+
+- id: 9
+  level: easy
+  question: How many new customers did we get each month in 2010?
+  gold_sql: SELECT invoice_month, new_customers FROM monthly_kpis WHERE year(invoice_month) = 2010 ORDER BY invoice_month
+
+- id: 10
+  level: easy
+  question: What was the year-over-year revenue growth in November 2011?
+  gold_sql: SELECT revenue_yoy_pct FROM monthly_kpis WHERE invoice_month = DATE '2011-11-01'
+
+- id: 11
+  level: medium
+  question: Which product (stock code) sold the most units?
+  gold_sql: |
+    SELECT stock_code, sum(quantity) AS units
+    FROM sales GROUP BY stock_code ORDER BY units DESC LIMIT 1
+
+- id: 12
+  level: medium
+  question: How many orders were placed in November 2010?
+  gold_sql: |
+    SELECT count(DISTINCT invoice) AS orders
+    FROM sales WHERE invoice_month = DATE '2010-11-01'
+
+- id: 13
+  level: medium
+  question: How many distinct customers bought something in 2011?
+  gold_sql: SELECT count(DISTINCT customer_id) AS customers FROM sales WHERE year(invoice_date) = 2011
+
+- id: 14
+  level: medium
+  question: What is total revenue by day of the week?
+  gold_sql: |
+    SELECT dayname(invoice_date) AS weekday, sum(revenue) AS revenue
+    FROM sales GROUP BY weekday ORDER BY revenue DESC
+
+- id: 15
+  level: medium
+  question: What are the top 5 countries by revenue outside the United Kingdom?
+  gold_sql: |
+    SELECT country, sum(revenue) AS revenue
+    FROM sales WHERE country <> 'United Kingdom'
+    GROUP BY country ORDER BY revenue DESC LIMIT 5
+
+- id: 16
+  level: medium
+  question: Who are the 10 customers with the highest total spend?
+  gold_sql: |
+    SELECT customer_id, sum(revenue) AS spend
+    FROM sales WHERE customer_id IS NOT NULL
+    GROUP BY customer_id ORDER BY spend DESC LIMIT 10
+
+- id: 17
+  level: medium
+  question: How many customers have only ever placed one order?
+  gold_sql: SELECT count(*) AS customers FROM rfm WHERE frequency = 1
+
+- id: 18
+  level: medium
+  question: Which product (stock code) had the most units returned?
+  gold_sql: |
+    SELECT stock_code, sum(quantity) AS units_returned
+    FROM returns GROUP BY stock_code ORDER BY units_returned DESC LIMIT 1
+
+- id: 19
+  level: medium
+  question: How many customers were in the December 2010 cohort?
+  gold_sql: SELECT count(*) AS customers FROM customer_first_month WHERE first_month = DATE '2010-12-01'
+
+- id: 20
+  level: medium
+  question: What percentage of the January 2011 cohort was still buying three months later?
+  gold_sql: |
+    SELECT retention_pct FROM cohort_retention
+    WHERE cohort_month = DATE '2011-01-01' AND months_since_first = 3
+
+- id: 21
+  level: medium
+  question: Which hour of the day gets the most orders?
+  gold_sql: |
+    SELECT hour(invoice_date) AS hour, count(DISTINCT invoice) AS orders
+    FROM sales GROUP BY hour ORDER BY orders DESC LIMIT 1
+
+- id: 22
+  level: medium
+  question: What are the top 3 products by revenue in Germany?
+  gold_sql: |
+    SELECT stock_code, sum(revenue) AS revenue
+    FROM sales WHERE country = 'Germany'
+    GROUP BY stock_code ORDER BY revenue DESC LIMIT 3
+
+- id: 23
+  level: medium
+  question: Excluding the partial month, which month had the biggest month-over-month revenue drop?
+  gold_sql: |
+    SELECT invoice_month, revenue_mom_pct FROM monthly_kpis
+    WHERE NOT is_partial_month ORDER BY revenue_mom_pct ASC LIMIT 1
+
+- id: 24
+  level: hard
+  question: On average, how many different products are in an order?
+  gold_sql: |
+    SELECT avg(n_products) AS avg_products_per_order
+    FROM (SELECT invoice, count(DISTINCT stock_code) AS n_products FROM sales GROUP BY invoice)
+
+- id: 25
+  level: hard
+  question: How much revenue did each RFM segment bring in during 2011?
+  gold_sql: |
+    SELECT r.segment, sum(s.revenue) AS revenue
+    FROM sales s JOIN rfm r USING (customer_id)
+    WHERE year(s.invoice_date) = 2011
+    GROUP BY r.segment ORDER BY revenue DESC
+
+- id: 26
+  level: hard
+  question: Among countries with at least 10 customers, which has the highest revenue per customer?
+  gold_sql: |
+    SELECT country, sum(revenue) / count(DISTINCT customer_id) AS revenue_per_customer
+    FROM sales WHERE customer_id IS NOT NULL
+    GROUP BY country HAVING count(DISTINCT customer_id) >= 10
+    ORDER BY revenue_per_customer DESC LIMIT 1
+
+- id: 27
+  level: hard
+  question: What percentage of Champions customers are outside the United Kingdom?
+  gold_sql: |
+    SELECT 100.0 * avg(CASE WHEN country <> 'United Kingdom' THEN 1 ELSE 0 END) AS pct_outside_uk
+    FROM rfm WHERE segment = 'Champions'
+
+- id: 28
+  level: hard
+  question: What was the average order value in each year?
+  gold_sql: |
+    SELECT year(invoice_date) AS year, sum(revenue) / count(DISTINCT invoice) AS avg_order_value
+    FROM sales GROUP BY year ORDER BY year
+
+- id: 29
+  level: hard
+  question: How many customers who first bought in 2010 also bought in 2011?
+  gold_sql: |
+    SELECT count(DISTINCT s.customer_id) AS customers
+    FROM sales s JOIN customer_first_month f USING (customer_id)
+    WHERE year(f.first_month) = 2010 AND year(s.invoice_date) = 2011
+
+- id: 30
+  level: hard
+  question: What share of revenue in 2011 came from guest checkouts with no customer ID?
+  gold_sql: |
+    SELECT 100.0 * sum(CASE WHEN customer_id IS NULL THEN revenue ELSE 0 END) / sum(revenue) AS guest_revenue_pct
+    FROM sales WHERE year(invoice_date) = 2011
